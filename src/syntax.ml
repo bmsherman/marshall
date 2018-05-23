@@ -85,7 +85,8 @@ struct
 	   and $a ={e}= b$, which means $-e < a - b < e$. *)
     | And of expr list (* [p1 /\ p2 /\ ... /\ pn] *)
     | Or of expr list (* [p1 \/ p2 \/ ... \/ pn] *)
-    | OPattern of (expr * expr) list
+    | Join of expr list
+    | Restrict of (expr * expr)
     | Exists of name * I.t * expr (* [exists x : [a,b], p] *)
     | Forall of name * I.t * expr (* [forall x : [a,b], p] *)
     | Let of name * expr * expr (* [let x = e1 in e2] *)
@@ -105,6 +106,7 @@ struct
     | Precision of D.t          (* Target precision [$precision d] *)
     | Hnf of expr               (* Compute head-normal form *)
     | Help                      (* Print help *)
+    | Plot of int * expr
     | Quit                      (* Exit toplevel [$quit] *)
 
   (** Convert a type to a string *)
@@ -147,7 +149,8 @@ struct
 	  | Less (e1, e2) ->     (30, to_str 30 e1 ^ " < " ^ to_str 30 e2)
 	  | And lst ->           (20, String.concat " /\\ " (List.map (to_str 19) lst))
 	  | Or lst ->            (15, String.concat " \\/ " (List.map (to_str 14) lst))
-  	| OPattern lst ->            (15, String.concat " || " (List.map (fun p -> to_str 14 (fst p) ^ "~>" ^ to_str 14 (snd p)) lst))
+	  | Restrict (e1, e2) -> (14, to_str 13 e1 ^ " ~> " ^ to_str 13 e2)
+  	| Join lst ->         (13, "{" ^ String.concat " || "  (List.map (to_str 12) lst) ^ "}")
 	  | Exists (x, t, p) ->  (10, "exists " ^ string_of_name x ^ " : " ^
 				    I.to_string t ^ " , " ^ to_str 9 p)
 	  | Forall (x, t, p) ->  (10, "forall " ^ string_of_name x ^ " : " ^

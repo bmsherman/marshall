@@ -29,7 +29,7 @@
 %token INFINITY
 %token TRUE FALSE
 %token AND OR
-%token POR PBRANCH
+%token JOIN RESTRICT
 %token FORALL EXISTS
 %token LET IN
 %token CUT LEFT RIGHT
@@ -41,7 +41,7 @@
 %token COLON COMMA SEMISEMI
 %token LPAREN RPAREN
 %token LBRACK RBRACK LBRACE RBRACE
-%token USE QUIT TRACE PRECISION HNF HELP
+%token USE QUIT TRACE PRECISION HNF HELP PLOT
 %token <string> STRING
 %token EOF
 
@@ -103,15 +103,15 @@ topdirective:
     { S.Hnf e }
   | HELP
     { S.Help }
+  | PLOT n = NATURAL e = expr
+    { S.Plot (n, e) }
   | QUIT
     { S.Quit }
 
 (* Main syntax tree. *)
 expr:
-  | e = or_expr
+  | e = join_expr
     { e }
-  | e = opattern_expr
-    { S.OPattern e }
   | CUT x = VAR COLON s = segment LEFT e1 = expr RIGHT e2 = expr
     { S.Cut (x, s, e1, e2) }
   | CUT x = VAR LEFT e1 = expr RIGHT e2 = expr
@@ -207,16 +207,28 @@ or_expr:
   | e = and_expr OR es = or_expr_list
     { S.Or (e :: es) }
 
-opattern_expr:
-  | p = or_expr PBRANCH e = or_expr POR es = opattern_expr
-    { (p,e) :: es }
-  | p = or_expr PBRANCH e = or_expr
-    { [(p, e)] }
-
 or_expr_list:
   | e = and_expr
     { [e] }
   | e = and_expr OR es = or_expr_list
+    { e :: es }
+
+restrict_expr:
+  | e = or_expr
+    { e }
+  | e1 = or_expr RESTRICT e2 = or_expr
+    { S.Restrict (e1, e2) }
+
+join_expr:
+  | e = restrict_expr
+    { e }
+  | e = restrict_expr JOIN es = join_expr_list
+    { S.Join (e :: es) }
+
+join_expr_list:
+  | e = restrict_expr
+    { [e] }
+  | e = restrict_expr JOIN es = join_expr_list
     { e :: es }
 
 expr_list:

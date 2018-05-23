@@ -15,11 +15,8 @@ struct
     | S.Interval i -> i
     | S.Dyadic q -> I.of_dyadic q
     | S.Cut (_, i, _, _) -> i
-		| S.OPattern lst ->
-		      let rec fold acc = function
-      | [] -> acc
-      | (p, e)::ps -> fold (I.bin_or acc (get_interval e)) ps
-        in fold I.bottom lst
+		| S.Join lst ->
+		   List.fold_left (fun acc e -> I.bin_or acc (get_interval e)) I.bottom lst
     | e -> error ("Numerical constant expected but got " ^ S.string_of_expr e)
 
   (* Get the bound variable and the matrix of an abstraction. *)
@@ -146,7 +143,7 @@ struct
 		S.False
 	| S.And lst -> fold_and approx lst
 	| S.Or lst -> fold_or approx lst
-	| S.OPattern lst -> fold_opattern_l prec env lst (* is this right? *)
+	| S.Join lst -> S.Join (List.map approx lst) (* Is this right? *)
 	| S.Exists (x, s, e) ->
 	    let m = S.Dyadic (I.midpoint prec 1 s) in
 	      lower prec (Env.extend x m env) e
@@ -163,20 +160,8 @@ struct
 	| S.App (e1, e2) ->
 	    let x, e = get_lambda (approx e1) in
 	      lower prec (Env.extend x (approx e2) env) e
-
-and
-	 fold_opattern_l prec env lst =
-    let rec fold acc = function
-      | [] -> acc
-      | (p, e) ::ps ->
-	  (match lower prec env p with
-	     | S.True -> raise (Break1(e))
-	     | q -> fold ((q, e)::acc) ps)
-    in
-      try
-	match fold [] lst with
-	  | lst -> S.OPattern (List.rev lst)
-      with Break1(e) -> lower prec env e
+	| S.Restrict (e1, e2) -> (* currently assuming we must have a number *)
+	    S.Interval I.bottom
 
 
 
@@ -213,7 +198,7 @@ and
 		S.False
 	| S.And lst -> fold_and approx lst
 	| S.Or lst -> fold_or approx lst
-	| S.OPattern lst -> fold_opattern_u prec env lst (* is this right? *)
+	| S.Join lst -> S.Join (List.map approx lst) (* Is this right? *)
 	| S.Exists (x, i, e) ->
 	    let j = I.flip i in
 	      upper prec (Env.extend x (S.Interval j) env) e
@@ -231,19 +216,7 @@ and
 	| S.App (e1, e2) ->
 	    let x, e = get_lambda (approx e1) in
 	      upper prec (Env.extend x (approx e2) env) e
-
-and
-	 fold_opattern_u prec env lst =
-    let rec fold acc = function
-      | [] -> acc
-      | (p, e) ::ps ->
-	  (match lower prec env p with
-	     | S.True -> raise (Break1(e))
-	     | q -> fold ((q, e)::acc) ps)
-    in
-      try
-	match fold [] lst with
-	  | lst -> S.OPattern (List.rev lst)
-      with Break1(e) -> upper prec env e
+	| S.Restrict (e1, e2) -> (* currently assuming we must have a number *)
+	    S.Interval I.top
 
 end;;
